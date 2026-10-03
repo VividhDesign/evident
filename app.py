@@ -30,6 +30,7 @@ if HOSTED:
     os.environ.setdefault("EVIDENT_LLM_PROVIDER", "groq")
     os.environ.setdefault("EVIDENT_LLM_MODEL", "llama-3.1-8b-instant")
     os.environ.setdefault("EVIDENT_VERBOSE", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_XET", "1")  # plain HTTPS downloads; Xet's native I/O can fail in containers
     os.environ.setdefault("EVIDENT_THREADS", "2")  # if an index must be built, don't oversubscribe a shared CPU
     try:  # Streamlit secrets -> environment, for the LLM client
         for key in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):
@@ -48,7 +49,6 @@ from evident.llm import LLM, PROVIDERS  # noqa: E402
 from evident.rag import RAG  # noqa: E402
 from evident.retriever import MODES, Retriever  # noqa: E402
 
-HOSTED = os.environ.get("EVIDENT_HOSTED") == "1"
 QUESTION_LIMIT = 20  # per browser session on the hosted demo (protects the free API quota)
 STRATA_REPO = "https://github.com/VividhDesign/strata"
 EVIDENT_REPO = "https://github.com/VividhDesign/evident"
