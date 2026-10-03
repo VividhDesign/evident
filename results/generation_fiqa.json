@@ -1,0 +1,89 @@
+{
+  "dataset": "fiqa",
+  "questions": 100,
+  "k": 5,
+  "seed": 0,
+  "generator": "ollama/qwen3.5",
+  "judge": "ollama/gemma4:12b",
+  "retrieval_alpha": 0.7,
+  "conditions": {
+    "bm25": {
+      "n": 100,
+      "abstention_rate": 0.16,
+      "context_hit_rate": 0.43,
+      "faithfulness": 0.996031746031746,
+      "fully_faithful_rate": 0.9880952380952381,
+      "answer_relevance": 4.023809523809524,
+      "citation_precision": 0.9078798185941043,
+      "citation_coverage": 0.9136904761904762,
+      "invalid_citations": 0,
+      "latency_ms": {
+        "retrieval_p50": 3.941687027690932,
+        "generation_p50": 4682.651583512779,
+        "generation_p95": 5777.7286604599785,
+        "end_to_end_p50": 4687.150687008398,
+        "end_to_end_p95": 5781.275746886967
+      },
+      "tokens_per_query": {
+        "input": 1369.2,
+        "output": 90.9
+      },
+      "estimated_usd_per_1k_queries": {
+        "groq/llama-3.1-8b-instant": 0.07573200000000001,
+        "groq/llama-3.3-70b-versatile": 0.879639
+      }
+    },
+    "hybrid_convex": {
+      "n": 100,
+      "abstention_rate": 0.08,
+      "context_hit_rate": 0.57,
+      "faithfulness": 0.988095238095238,
+      "fully_faithful_rate": 0.9560439560439561,
+      "answer_relevance": 4.336956521739131,
+      "citation_precision": 0.8849508281573499,
+      "citation_coverage": 0.9579710144927537,
+      "invalid_citations": 0,
+      "latency_ms": {
+        "retrieval_p50": 108.25033305445686,
+        "generation_p50": 4932.9785625159275,
+        "generation_p95": 6471.603961059009,
+        "end_to_end_p50": 5157.378437521402,
+        "end_to_end_p95": 6569.17204206693
+      },
+      "tokens_per_query": {
+        "input": 1122.95,
+        "output": 103.89
+      },
+      "estimated_usd_per_1k_queries": {
+        "groq/llama-3.1-8b-instant": 0.06445870000000001,
+        "groq/llama-3.3-70b-versatile": 0.7446135999999999
+      }
+    },
+    "evidence_removed": {
+      "n": 50,
+      "abstention_rate": 0.08,
+      "context_hit_rate": 0.0,
+      "faithfulness": 0.9666666666666667,
+      "fully_faithful_rate": 0.8695652173913043,
+      "answer_relevance": 4.130434782608695,
+      "citation_precision": 0.8407608695652173,
+      "citation_coverage": 0.9210144927536232,
+      "invalid_citations": 0,
+      "latency_ms": {
+        "retrieval_p50": 58.33635351154953,
+        "generation_p50": 3413.9958540035877,
+        "generation_p95": 6053.6086559528485,
+        "end_to_end_p50": 3458.625354076503,
+        "end_to_end_p95": 6183.369235147256
+      },
+      "tokens_per_query": {
+        "input": 1069.86,
+        "output": 106.1
+      },
+      "estimated_usd_per_1k_queries": {
+        "groq/llama-3.1-8b-instant": 0.06198099999999999,
+        "groq/llama-3.3-70b-versatile": 0.7150363999999999
+      }
+    }
+  }
+}

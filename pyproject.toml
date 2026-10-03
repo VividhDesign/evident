@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evident"
+version = "0.1.0"
+description = "Retrieval-augmented generation where every component is measured"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+  "scipy>=1.10",
+  "PyStemmer>=2.2",
+  "sentence-transformers>=3.0",
+  "torch>=2.2",
+  "httpx>=0.27",
+  "pypdf>=4.0",
+  # Vector index. Until it is on PyPI: pip install ../strata  (or git+https://github.com/<you>/strata)
+  "strata-vdb",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.35", "pandas"]
+dev = ["pytest>=7", "faiss-cpu", "matplotlib"]
+
+[project.scripts]
+evident = "evident.cli:main"
+
+[tool.setuptools]
+packages = ["evident"]
+
+[tool.setuptools.package-data]
+evident = ["prices.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

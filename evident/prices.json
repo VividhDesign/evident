@@ -1,0 +1,7 @@
+{
+  "_note": "USD per 1M tokens, checked 2026-10-03 against Groq's published pay-as-you-go prices. Add any provider/model you use as \"provider/model\".",
+  "usd_per_million_tokens": {
+    "groq/llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
+    "groq/llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79}
+  }
+}
