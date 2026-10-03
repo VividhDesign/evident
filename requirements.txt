@@ -1,0 +1,15 @@
+# Streamlit Community Cloud installs these (the app is app.py; the `evident` package is imported
+# straight from this repository). Local development: pip install -e ".[app,dev]" instead.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+strata-vdb @ git+https://github.com/VividhDesign/strata
+numpy
+scipy
+PyStemmer
+sentence-transformers
+httpx
+pypdf
+streamlit
+pandas
+altair
+huggingface_hub

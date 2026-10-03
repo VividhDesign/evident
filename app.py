@@ -11,17 +11,34 @@ import json
 import os
 import re
 import time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
-from evident import config
-from evident.data import load_beir
-from evident.ingest import list_corpora, load_corpus
-from evident.llm import LLM, PROVIDERS
-from evident.rag import RAG
-from evident.retriever import MODES, Retriever
+# Streamlit Community Cloud checks the repo out under /mount/src. The hosted settings must be in
+# the environment before evident.config is imported.
+ON_STREAMLIT_CLOUD = Path(__file__).resolve().as_posix().startswith("/mount/src/")
+HOSTED = os.environ.get("EVIDENT_HOSTED") == "1" or ON_STREAMLIT_CLOUD
+DEMO_DATA_REPO = "vividh111/evident-demo-data"  # precomputed embeddings (Hugging Face dataset)
+if HOSTED:
+    os.environ.setdefault("EVIDENT_DATA", str(Path.home() / ".cache" / "evident-demo"))
+    os.environ.setdefault("EVIDENT_LLM_PROVIDER", "groq")
+    os.environ.setdefault("EVIDENT_LLM_MODEL", "llama-3.1-8b-instant")
+    try:  # Streamlit secrets -> environment, for the LLM client
+        for key in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):
+            if key in st.secrets and not os.environ.get(key):
+                os.environ[key] = str(st.secrets[key])
+    except Exception:  # no secrets configured
+        pass
+
+from evident import config  # noqa: E402
+from evident.data import load_beir  # noqa: E402
+from evident.ingest import list_corpora, load_corpus  # noqa: E402
+from evident.llm import LLM, PROVIDERS  # noqa: E402
+from evident.rag import RAG  # noqa: E402
+from evident.retriever import MODES, Retriever  # noqa: E402
 
 HOSTED = os.environ.get("EVIDENT_HOSTED") == "1"
 QUESTION_LIMIT = 20  # per browser session on the hosted demo (protects the free API quota)
@@ -30,6 +47,21 @@ EVIDENT_REPO = "https://github.com/VividhDesign/evident"
 STRATA_IMG = "https://raw.githubusercontent.com/VividhDesign/strata/main/docs/img/{}-light.png"
 
 st.set_page_config(page_title="Evident + Strata demo", layout="wide")
+
+
+@st.cache_resource(show_spinner="Downloading precomputed embeddings (first start only)...")
+def ensure_demo_data() -> None:
+    """On the hosted demo, fetch document embeddings instead of recomputing them on a small CPU.
+    The BEIR corpora themselves are downloaded from their original source on first use."""
+    if not HOSTED or any((config.CACHE_DIR / "embeddings").glob("*.npy")):
+        return
+    from huggingface_hub import snapshot_download
+
+    snapshot_download(DEMO_DATA_REPO, repo_type="dataset", local_dir=str(config.DATA_DIR),
+                      allow_patterns=["cache/*", "indexes/*"])
+
+
+ensure_demo_data()
 
 
 # ---------------------------------------------------------------------------------------------
