@@ -35,5 +35,5 @@ def tuned_alpha(dataset: str, default: float = 0.5) -> float:
 
     path = RESULTS_DIR / f"retrieval_{dataset}.json"
     if path.exists():
-        return float(json.loads(path.read_text()).get("alpha_tuning", {}).get("best_alpha", default))
+        return float(json.loads(path.read_text(encoding="utf-8")).get("alpha_tuning", {}).get("best_alpha", default))
     return default

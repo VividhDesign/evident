@@ -43,7 +43,7 @@ def load_prices() -> dict[str, tuple[float, float]]:
     prices = dict(DEFAULT_PRICES)
     path = config.ROOT / "evident" / "prices.json"
     if path.exists():
-        for k, v in json.loads(path.read_text()).get("usd_per_million_tokens", {}).items():
+        for k, v in json.loads(path.read_text(encoding="utf-8")).get("usd_per_million_tokens", {}).items():
             prices[k] = (float(v["input"]), float(v["output"]))
     return prices
 

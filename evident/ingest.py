@@ -22,7 +22,7 @@ def ingest(folder: str, name: str, max_words: int = 180, overlap: int = 40) -> i
         raise ValueError(f"no .pdf/.md/.txt content found in {folder}")
     path = _corpus_path(name)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         for d in docs:
             f.write(json.dumps({"id": d.id, "title": d.title, "text": d.text, "metadata": d.metadata}) + "\n")
     Embedder().embed_documents([d.full_text for d in docs])  # warm the embedding cache
@@ -33,7 +33,7 @@ def load_corpus(name: str) -> list[Doc]:
     path = _corpus_path(name)
     if not path.exists():
         raise FileNotFoundError(f"unknown corpus '{name}' (BEIR: {', '.join(config.BEIR_DATASETS)}; or run `evident ingest`)")
-    return [Doc(**json.loads(line)) for line in open(path) if line.strip()]
+    return [Doc(**json.loads(line)) for line in open(path, encoding="utf-8") if line.strip()]
 
 
 def list_corpora() -> list[str]:

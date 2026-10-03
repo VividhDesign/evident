@@ -78,7 +78,9 @@ ensure_demo_data()
 @st.cache_resource(show_spinner="Loading corpus and building BM25 + Strata indexes (first visit only)...")
 def get_retriever(corpus: str, reranker: str) -> Retriever:
     docs = load_beir(corpus, "test").docs if corpus in config.BEIR_DATASETS else load_corpus(corpus)
-    return Retriever(docs, reranker=reranker, alpha=config.tuned_alpha(corpus))
+    retriever = Retriever(docs, reranker=reranker, alpha=config.tuned_alpha(corpus))
+    print(f"[evident] {corpus}: {len(docs)} docs, startup seconds {retriever.build_seconds}", file=sys.stderr, flush=True)
+    return retriever
 
 
 @st.cache_resource
@@ -95,7 +97,7 @@ def evaluated_answers() -> list[dict]:
     path = config.RESULTS_DIR / "generation_fiqa_records.jsonl"
     if not path.exists():
         return []
-    rows = [json.loads(line) for line in open(path) if line.strip()]
+    rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
     rows = [r for r in rows if r["condition"] == "hybrid_convex" and not r["abstained"]]
     return sorted(rows, key=lambda r: (-(r["relevance"] or 0), r["question"]))
 
@@ -302,10 +304,10 @@ with bench_tab:
         st.image(str(chart))
     table = config.RESULTS_DIR / "retrieval_table.md"
     if table.exists():
-        st.markdown(table.read_text())
+        st.markdown(table.read_text(encoding="utf-8"))
     for path in sorted(config.RESULTS_DIR.glob("generation_*_table.md")):
         st.subheader("Answer quality (FiQA, 100 questions)")
-        st.markdown(path.read_text())
+        st.markdown(path.read_text(encoding="utf-8"))
 
 # ---------------------------------------------------------------------------------------------
 # How it works

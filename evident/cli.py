@@ -77,7 +77,7 @@ def cmd_ingest(args):
 def cmd_calibrate_judge(args):
     """Hand-label a sample of judged claims to measure how often the judge agrees with you."""
     path = config.RESULTS_DIR / f"generation_{args.dataset}_records.jsonl"
-    rows = [json.loads(line) for line in open(path) if line.strip()]
+    rows = [json.loads(line) for line in open(path, encoding="utf-8") if line.strip()]
     items = [(r, c) for r in rows for c in r.get("claims", [])]
     random.Random(0).shuffle(items)
     agree = total = 0

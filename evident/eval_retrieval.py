@@ -110,7 +110,7 @@ def evaluate(dataset: str, modes=DEFAULT_MODES, rerankers=("minilm", "bge"),
     print(f"[{dataset}] ANN fidelity: top-10 overlap {overlap:.4f}, exact nDCG@10 {exact_metrics['ndcg@10']:.4f}", flush=True)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / f"retrieval_{dataset}.json").write_text(json.dumps(report, indent=2))
+    (out_dir / f"retrieval_{dataset}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
 
 

@@ -100,12 +100,12 @@ def evaluate(dataset: str = "fiqa", n: int = 100, abstention_n: int = 50, k: int
             print(f"  generated {i}/{len(jobs)}", flush=True)
 
     print(f"[{dataset}] judging with {judge_llm.name}", flush=True)
-    records_path.write_text("")
+    records_path.write_text("", encoding="utf-8")
     for i, (condition, qid, ans) in enumerate(answers, 1):
         relevant = {d for d, r in ds.qrels[qid].items() if r > 0}
         row = _record(condition, qid, ans, judge.judge(ans), relevant)
         rows.append(row)
-        with open(records_path, "a") as f:
+        with open(records_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(row) + "\n")
         if i % 25 == 0:
             print(f"  judged {i}/{len(answers)}", flush=True)
@@ -116,13 +116,13 @@ def evaluate(dataset: str = "fiqa", n: int = 100, abstention_n: int = 50, k: int
         "conditions": {c: summarize([r for r in rows if r["condition"] == c])
                        for c in dict.fromkeys(r["condition"] for r in rows)},
     }
-    (out_dir / f"generation_{dataset}.json").write_text(json.dumps(report, indent=2))
+    (out_dir / f"generation_{dataset}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
 
 
 def paired_bootstrap(records_path: Path, n_boot: int = 10_000, seed: int = 0) -> dict:
     """95% bootstrap CIs for paired differences between conditions on the same questions."""
-    rows = [json.loads(line) for line in open(records_path) if line.strip()]
+    rows = [json.loads(line) for line in open(records_path, encoding="utf-8") if line.strip()]
     by: dict[str, dict[str, dict]] = {}
     for r in rows:
         by.setdefault(r["condition"], {})[r["qid"]] = r

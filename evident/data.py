@@ -52,7 +52,7 @@ def download_beir(name: str) -> Path:
 
 def _read_qrels(path: Path) -> dict[str, dict[str, int]]:
     qrels: dict[str, dict[str, int]] = {}
-    with open(path, newline="") as f:
+    with open(path, newline="", encoding="utf-8") as f:
         reader = csv.reader(f, delimiter="\t")
         next(reader)  # header
         for qid, did, score in reader:
@@ -63,7 +63,7 @@ def _read_qrels(path: Path) -> dict[str, dict[str, int]]:
 def load_beir(name: str, split: str = "test") -> Dataset:
     root = download_beir(name)
     docs = []
-    with open(root / "corpus.jsonl") as f:
+    with open(root / "corpus.jsonl", encoding="utf-8") as f:
         for line in f:
             d = json.loads(line)
             docs.append(Doc(id=str(d["_id"]), text=d.get("text", ""), title=d.get("title", ""),
@@ -73,7 +73,7 @@ def load_beir(name: str, split: str = "test") -> Dataset:
         raise FileNotFoundError(f"{name} has no '{split}' split")
     qrels = _read_qrels(qrels_path)
     queries = {}
-    with open(root / "queries.jsonl") as f:
+    with open(root / "queries.jsonl", encoding="utf-8") as f:
         for line in f:
             q = json.loads(line)
             if str(q["_id"]) in qrels:
@@ -130,7 +130,7 @@ def load_documents(folder: str | Path, max_words: int = 180, overlap: int = 40) 
 
             pages = [(i + 1, p.extract_text() or "") for i, p in enumerate(PdfReader(path).pages)]
         elif suffix in (".md", ".txt", ".markdown"):
-            pages = [(None, path.read_text(errors="ignore"))]
+            pages = [(None, path.read_text(encoding="utf-8", errors="ignore"))]
         else:
             continue
         for page, text in pages:
