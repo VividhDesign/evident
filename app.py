@@ -29,6 +29,7 @@ if HOSTED:
     os.environ.setdefault("EVIDENT_DATA", str(Path.home() / ".cache" / "evident-demo"))
     os.environ.setdefault("EVIDENT_LLM_PROVIDER", "groq")
     os.environ.setdefault("EVIDENT_LLM_MODEL", "llama-3.1-8b-instant")
+    os.environ.setdefault("EVIDENT_VERBOSE", "1")
     os.environ.setdefault("EVIDENT_THREADS", "2")  # if an index must be built, don't oversubscribe a shared CPU
     try:  # Streamlit secrets -> environment, for the LLM client
         for key in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):

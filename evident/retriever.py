@@ -53,9 +53,12 @@ class Retriever:
 
         t0 = time.perf_counter()
         bm25_path = cache_root / "bm25" / f"{len(self.texts)}-{fp}.npz" if fp else None
+        config.log(f"corpus fingerprint {fp} ({len(self.texts)} docs)")
         if bm25_path is not None and bm25_path.exists():
             self.bm25 = BM25.load(bm25_path)
+            config.log(f"bm25 loaded {bm25_path.name}")
         else:
+            config.log(f"bm25 cache miss {bm25_path}; have {sorted(p.name for p in bm25_path.parent.glob('*'))if bm25_path else []}")
             self.bm25 = BM25().fit(self.texts)
             if bm25_path is not None:
                 self.bm25.save(bm25_path)
@@ -68,8 +71,11 @@ class Retriever:
         if dense_backend == "strata" and fp:
             kwargs["index_path"] = (cache_root / "strata" /
                                     f"{model_slug(self.embedder.model_name)}-{len(self.texts)}-{fp}-M16-efc200.bin")
+        config.log(f"embeddings ready {self.doc_vectors.shape}; {dense_backend} index_path={kwargs.get('index_path')} "
+                   f"exists={kwargs['index_path'].exists() if 'index_path' in kwargs else None}")
         self.dense = make_dense(dense_backend, self.doc_vectors, **kwargs)
         self.build_seconds[f"{dense_backend}_index"] = time.perf_counter() - t0
+        config.log(f"{dense_backend} index ready in {self.build_seconds[f'{dense_backend}_index']:.1f}s")
         self._reranker = reranker
 
     @property

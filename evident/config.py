@@ -37,3 +37,12 @@ def tuned_alpha(dataset: str, default: float = 0.5) -> float:
     if path.exists():
         return float(json.loads(path.read_text(encoding="utf-8")).get("alpha_tuning", {}).get("best_alpha", default))
     return default
+
+
+def log(message: str) -> None:
+    """Diagnostic line on stderr when EVIDENT_VERBOSE=1 (the hosted demo turns it on)."""
+    if os.environ.get("EVIDENT_VERBOSE") == "1":
+        import sys
+        import time
+
+        print(f"[evident {time.strftime('%H:%M:%S')}] {message}", file=sys.stderr, flush=True)

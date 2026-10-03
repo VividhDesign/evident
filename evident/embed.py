@@ -58,7 +58,9 @@ class Embedder:
         slug = re.sub(r"[^A-Za-z0-9]+", "_", self.model_name)
         path = config.CACHE_DIR / "embeddings" / f"{slug}-{len(texts)}-{h.hexdigest()[:16]}.npy"
         if path.exists():
+            config.log(f"embeddings loaded {path.name}")
             return np.load(path)
+        config.log(f"embeddings cache miss {path.name}; have {sorted(q.name for q in path.parent.glob('*')) if path.parent.exists() else []}")
         vectors = self._encode(texts, progress=len(texts) > 1000)
         path.parent.mkdir(parents=True, exist_ok=True)
         np.save(path, vectors)
