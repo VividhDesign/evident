@@ -1,6 +1,6 @@
 # Evident
 
-**Retrieval-augmented generation where every component is measured.** Evident has these parts:
+**Retrieval-augmented generation where every component is measured.** · **[Live demo](https://evident-rag.streamlit.app)** Evident has these parts:
 - hybrid retrieval: BM25 written from scratch, plus dense vectors served by my own vector database
   [Strata](https://github.com/VividhDesign/strata);
 - optional cross-encoder reranking;
