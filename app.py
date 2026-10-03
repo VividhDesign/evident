@@ -17,9 +17,12 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# Streamlit Community Cloud checks the repo out under /mount/src. The hosted settings must be in
-# the environment before evident.config is imported.
-ON_STREAMLIT_CLOUD = Path(__file__).resolve().as_posix().startswith("/mount/src/")
+# Streamlit Community Cloud checks the repo out under /mount/src (a symlinked path, so it must not be
+# resolved), runs as user "adminuser" and sets HOSTNAME=streamlit. Any one signal is enough. The hosted
+# settings must be in the environment before evident.config is imported.
+ON_STREAMLIT_CLOUD = (os.path.abspath(__file__).startswith("/mount/src/")
+                      or os.environ.get("HOME") == "/home/adminuser"
+                      or os.environ.get("HOSTNAME") == "streamlit")
 HOSTED = os.environ.get("EVIDENT_HOSTED") == "1" or ON_STREAMLIT_CLOUD
 DEMO_DATA_REPO = "vividh111/evident-demo-data"  # precomputed embeddings (Hugging Face dataset)
 if HOSTED:
@@ -35,6 +38,9 @@ if HOSTED:
         pass
 
 from evident import config  # noqa: E402
+import sys  # noqa: E402
+
+print(f"[evident] hosted={HOSTED} streamlit_cloud={ON_STREAMLIT_CLOUD} data_dir={config.DATA_DIR}", file=sys.stderr, flush=True)
 from evident.data import load_beir  # noqa: E402
 from evident.ingest import list_corpora, load_corpus  # noqa: E402
 from evident.llm import LLM, PROVIDERS  # noqa: E402
@@ -143,6 +149,7 @@ with st.sidebar:
     model = st.text_input("Model", default_model)
     st.divider()
     st.markdown(f"**Code:** [Evident (RAG)]({EVIDENT_REPO}) · [Strata (vector DB)]({STRATA_REPO})")
+    st.caption(f"Deployment: {'hosted' if HOSTED else 'local'}")
 
 ask_tab, strata_tab, bench_tab, how_tab = st.tabs(
     ["Ask", "Vector DB playground (Strata)", "Benchmarks", "How it works"])
