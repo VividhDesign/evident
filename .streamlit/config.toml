@@ -1,0 +1,8 @@
+[server]
+# Streamlit's source watcher walks every loaded module. With `transformers` installed that walk triggers
+# hundreds of lazy imports (seconds of CPU per scan, repeated on every rerun), which on a small shared
+# cloud CPU stalls the app and gets it throttled. Local development: pass --server.fileWatcherType auto.
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
