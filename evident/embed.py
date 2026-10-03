@@ -10,6 +10,19 @@ import numpy as np
 from . import config
 
 
+def corpus_fingerprint(texts: list[str]) -> str:
+    """Stable hash of a corpus, used to name cached artifacts (BM25 / Strata index files)."""
+    h = hashlib.sha1()
+    for t in texts:
+        h.update(t.encode())
+        h.update(b"\0")
+    return h.hexdigest()[:16]
+
+
+def model_slug(model_name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9]+", "_", model_name)
+
+
 def best_device() -> str:
     import torch
 

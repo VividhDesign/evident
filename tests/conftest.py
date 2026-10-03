@@ -53,4 +53,4 @@ def retriever(docs):
     from evident.retriever import Retriever
 
     return Retriever(docs, embedder=HashEmbedder(), dense_backend="strata", reranker=FakeReranker(), candidates=6,
-                     rerank_depth=6)
+                     rerank_depth=6, cache_embeddings=False)

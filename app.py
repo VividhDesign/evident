@@ -26,6 +26,7 @@ if HOSTED:
     os.environ.setdefault("EVIDENT_DATA", str(Path.home() / ".cache" / "evident-demo"))
     os.environ.setdefault("EVIDENT_LLM_PROVIDER", "groq")
     os.environ.setdefault("EVIDENT_LLM_MODEL", "llama-3.1-8b-instant")
+    os.environ.setdefault("EVIDENT_THREADS", "2")  # if an index must be built, don't oversubscribe a shared CPU
     try:  # Streamlit secrets -> environment, for the LLM client
         for key in ("GROQ_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):
             if key in st.secrets and not os.environ.get(key):
@@ -49,13 +50,13 @@ STRATA_IMG = "https://raw.githubusercontent.com/VividhDesign/strata/main/docs/im
 st.set_page_config(page_title="Evident + Strata demo", layout="wide")
 
 
-@st.cache_resource(show_spinner="Downloading precomputed embeddings (first start only)...")
+@st.cache_resource(show_spinner="Syncing precomputed embeddings and indexes (first start only)...")
 def ensure_demo_data() -> None:
-    """On the hosted demo, fetch document embeddings instead of recomputing them on a small CPU.
-    The BEIR corpora themselves are downloaded from their original source on first use."""
-    if not HOSTED or any((config.CACHE_DIR / "embeddings").glob("*.npy")):
+    """On the hosted demo, fetch precomputed embeddings and prebuilt BM25 / Strata indexes instead of
+    rebuilding them on a small shared CPU. The BEIR corpora come from their original source on first use."""
+    if not HOSTED:
         return
-    from huggingface_hub import snapshot_download
+    from huggingface_hub import snapshot_download  # incremental: only fetches files that changed
 
     snapshot_download(DEMO_DATA_REPO, repo_type="dataset", local_dir=str(config.DATA_DIR),
                       allow_patterns=["cache/*", "indexes/*"])

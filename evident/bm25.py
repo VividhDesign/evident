@@ -10,7 +10,9 @@ query is just a sum of a few sparse columns.
 
 from __future__ import annotations
 
+import os
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 from scipy import sparse
@@ -48,6 +50,27 @@ class BM25:
         w = self.idf[cols] * tf * (self.k1 + 1) / (tf + norm)
         self.weights = sparse.csc_matrix((w, (rows, cols)), shape=(self.n_docs, len(self.vocab)), dtype=np.float32)
         return self
+
+    def save(self, path: str | Path) -> None:
+        """Stores the fitted index (weights, vocabulary, idf) so it can be loaded without re-tokenising."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        w = self.weights
+        terms = np.array(sorted(self.vocab, key=self.vocab.get), dtype=str)
+        tmp = path.with_name(path.name + ".tmp.npz")
+        np.savez_compressed(tmp, data=w.data, indices=w.indices, indptr=w.indptr, shape=np.array(w.shape),
+                            idf=self.idf, params=np.array([self.k1, self.b]), terms=terms)
+        os.replace(tmp, path)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "BM25":
+        z = np.load(path)
+        bm = cls(k1=float(z["params"][0]), b=float(z["params"][1]))
+        bm.weights = sparse.csc_matrix((z["data"], z["indices"], z["indptr"]), shape=tuple(z["shape"]))
+        bm.idf = z["idf"]
+        bm.vocab = {str(t): i for i, t in enumerate(z["terms"])}
+        bm.n_docs = int(z["shape"][0])
+        return bm
 
     def scores(self, query: str) -> np.ndarray:
         """BM25 score of every document for `query` (repeated query terms count repeatedly)."""

@@ -91,3 +91,30 @@ def test_chunking_overlap_and_limits():
     assert all(len(c.split()) <= 120 for c in chunk_text(long_sentence, max_words=100, overlap=20))
     with pytest.raises(ValueError):
         chunk_text("x", max_words=10, overlap=10)
+
+
+def test_bm25_save_load_roundtrip(tmp_path):
+    texts = ["apple banana apple", "banana cherry", "cherry cherry cherry date"]
+    bm = BM25().fit(texts)
+    bm.save(tmp_path / "bm25.npz")
+    loaded = BM25.load(tmp_path / "bm25.npz")
+    assert loaded.vocab == bm.vocab and (loaded.k1, loaded.b) == (bm.k1, bm.b)
+    np.testing.assert_allclose(loaded.scores("apple cherry"), bm.scores("apple cherry"))
+
+
+def test_retriever_reuses_cached_indexes(tmp_path, monkeypatch, docs):
+    from conftest import FakeReranker, HashEmbedder
+
+    from evident import config
+    from evident.retriever import Retriever
+
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+    first = Retriever(docs, embedder=HashEmbedder(), reranker=FakeReranker())
+    assert len(list((tmp_path / "bm25").glob("*.npz"))) == 1
+    assert len(list((tmp_path / "strata").glob("*.bin"))) == 1
+    second = Retriever(docs, embedder=HashEmbedder(), reranker=FakeReranker())
+    query = "tax free retirement withdrawals"
+    assert [h.idx for h in first.run([query], "hybrid", k=4)[0]] == [h.idx for h in second.run([query], "hybrid", k=4)[0]]
+    # a different corpus must not pick up those files
+    Retriever(docs[:3], embedder=HashEmbedder(), reranker=FakeReranker())
+    assert len(list((tmp_path / "strata").glob("*.bin"))) == 2

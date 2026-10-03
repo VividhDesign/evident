@@ -17,10 +17,11 @@ from typing import Sequence
 
 import numpy as np
 
+from . import config
 from .bm25 import BM25
 from .data import Doc
 from .dense import make_dense
-from .embed import Embedder
+from .embed import Embedder, corpus_fingerprint, model_slug
 from .fusion import convex, rrf
 
 MODES = ("bm25", "dense", "hybrid", "hybrid_convex", "bm25_rerank", "hybrid_rerank")
@@ -45,14 +46,29 @@ class Retriever:
         self.candidates, self.rerank_depth, self.alpha, self.rrf_k = candidates, rerank_depth, alpha, rrf_k
         self.build_seconds: dict[str, float] = {}
 
+        # With caching on, built indexes are saved next to the embedding cache and reused while the
+        # corpus text is unchanged. This makes cold starts fast (e.g. the hosted demo).
+        fp = corpus_fingerprint(self.texts) if cache_embeddings else None
+        cache_root = config.CACHE_DIR
+
         t0 = time.perf_counter()
-        self.bm25 = BM25().fit(self.texts)
+        bm25_path = cache_root / "bm25" / f"{len(self.texts)}-{fp}.npz" if fp else None
+        if bm25_path is not None and bm25_path.exists():
+            self.bm25 = BM25.load(bm25_path)
+        else:
+            self.bm25 = BM25().fit(self.texts)
+            if bm25_path is not None:
+                self.bm25.save(bm25_path)
         self.build_seconds["bm25_index"] = time.perf_counter() - t0
         t0 = time.perf_counter()
         self.doc_vectors = self.embedder.embed_documents(self.texts, cache=cache_embeddings)
         self.build_seconds["embed_corpus"] = time.perf_counter() - t0
         t0 = time.perf_counter()
-        self.dense = make_dense(dense_backend, self.doc_vectors)
+        kwargs = {}
+        if dense_backend == "strata" and fp:
+            kwargs["index_path"] = (cache_root / "strata" /
+                                    f"{model_slug(self.embedder.model_name)}-{len(self.texts)}-{fp}-M16-efc200.bin")
+        self.dense = make_dense(dense_backend, self.doc_vectors, **kwargs)
         self.build_seconds[f"{dense_backend}_index"] = time.perf_counter() - t0
         self._reranker = reranker
 
