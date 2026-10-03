@@ -61,20 +61,26 @@ st.set_page_config(page_title="Evident + Strata demo", layout="wide")
 def ensure_demo_data() -> None:
     """On the hosted demo, fetch precomputed embeddings and prebuilt BM25 / Strata indexes instead of
     rebuilding them on a small shared CPU. The BEIR corpora come from their original source on first use."""
+    print(f"[evident] ensure_demo_data start hosted={HOSTED}", file=sys.stderr, flush=True)
     if not HOSTED:
         return
-    from huggingface_hub import hf_hub_download, list_repo_files
+    try:
+        from huggingface_hub import hf_hub_download, list_repo_files
 
-    wanted = [f for f in list_repo_files(DEMO_DATA_REPO, repo_type="dataset") if f.startswith(("cache/", "indexes/"))]
-    config.log(f"demo data: {len(wanted)} files listed in {DEMO_DATA_REPO}")
-    for name in wanted:
-        target = config.DATA_DIR / name
-        if target.exists():
-            continue
-        path = hf_hub_download(DEMO_DATA_REPO, name, repo_type="dataset", local_dir=str(config.DATA_DIR))
-        config.log(f"downloaded {name} -> {path}")
-    missing = [n for n in wanted if not (config.DATA_DIR / n).exists()]
-    config.log(f"demo data ready in {config.DATA_DIR} (missing: {missing})")
+        wanted = [f for f in list_repo_files(DEMO_DATA_REPO, repo_type="dataset") if f.startswith(("cache/", "indexes/"))]
+        print(f"[evident] demo data: {len(wanted)} files listed in {DEMO_DATA_REPO}", file=sys.stderr, flush=True)
+        for name in wanted:
+            target = config.DATA_DIR / name
+            if target.exists():
+                continue
+            path = hf_hub_download(DEMO_DATA_REPO, name, repo_type="dataset", local_dir=str(config.DATA_DIR))
+            print(f"[evident] downloaded {name} -> {path}", file=sys.stderr, flush=True)
+        missing = [n for n in wanted if not (config.DATA_DIR / n).exists()]
+        print(f"[evident] demo data ready in {config.DATA_DIR} (missing: {missing})", file=sys.stderr, flush=True)
+    except Exception:
+        import traceback
+
+        print("[evident] demo data download FAILED:\n" + traceback.format_exc(), file=sys.stderr, flush=True)
 
 
 ensure_demo_data()
