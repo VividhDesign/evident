@@ -63,10 +63,18 @@ def ensure_demo_data() -> None:
     rebuilding them on a small shared CPU. The BEIR corpora come from their original source on first use."""
     if not HOSTED:
         return
-    from huggingface_hub import snapshot_download  # incremental: only fetches files that changed
+    from huggingface_hub import hf_hub_download, list_repo_files
 
-    snapshot_download(DEMO_DATA_REPO, repo_type="dataset", local_dir=str(config.DATA_DIR),
-                      allow_patterns=["cache/*", "indexes/*"])
+    wanted = [f for f in list_repo_files(DEMO_DATA_REPO, repo_type="dataset") if f.startswith(("cache/", "indexes/"))]
+    config.log(f"demo data: {len(wanted)} files listed in {DEMO_DATA_REPO}")
+    for name in wanted:
+        target = config.DATA_DIR / name
+        if target.exists():
+            continue
+        path = hf_hub_download(DEMO_DATA_REPO, name, repo_type="dataset", local_dir=str(config.DATA_DIR))
+        config.log(f"downloaded {name} -> {path}")
+    missing = [n for n in wanted if not (config.DATA_DIR / n).exists()]
+    config.log(f"demo data ready in {config.DATA_DIR} (missing: {missing})")
 
 
 ensure_demo_data()
