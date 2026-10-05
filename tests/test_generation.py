@@ -2,7 +2,7 @@ import json
 
 from evident.judge import Judge
 from evident.llm import FakeLLM, extract_json
-from evident.rag import ABSTAIN_TEXT, RAG, is_abstention, sentence_citations
+from evident.rag import ABSTAIN_TEXT, RAG, is_abstention, normalize_citations, sentence_citations
 
 
 def test_citation_parsing():
@@ -59,3 +59,9 @@ def test_judge_skips_abstentions(retriever):
     assert ans.abstained
     j = Judge(FakeLLM([])).judge(ans)
     assert j.faithfulness is None and j.relevance is None
+
+
+def test_normalize_citations():
+    text = normalize_citations("Pay the debt first 【1】 【4】. Invest the rest【2†L3-L5】. Balance risk ［3］.")
+    assert text == "Pay the debt first [1] [4]. Invest the rest [2]. Balance risk [3]."
+    assert [c for _, c in sentence_citations(text)] == [[1, 4], [2], [3]]

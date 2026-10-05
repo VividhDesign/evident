@@ -19,6 +19,8 @@ Rules:
 
 _CITATION = re.compile(r"\[(\d+)\]")
 _LEADING_CITATIONS = re.compile(r"^((?:\[\d+\]\s*)+)")
+# GPT-OSS models cite as 【1】 or 【1†L2-L4】; full-width ［1］ also shows up.
+_ALT_CITATION = re.compile(r"\s*[【［]\s*(\d+)[^】］]*[】］]")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(\[])")
 _ABSTAIN_PATTERNS = re.compile(
     r"(don.t|do not) have enough information|not enough information|sources do not (contain|provide|mention)|"
@@ -34,6 +36,11 @@ def build_messages(question: str, passages: list[str]) -> list[dict]:
     sources = "\n\n".join(f"[{i + 1}] {p}" for i, p in enumerate(passages))
     return [{"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": f"Sources:\n{sources}\n\nQuestion: {question}"}]
+
+
+def normalize_citations(answer: str) -> str:
+    """Rewrites other citation styles to the [n] markers the prompt asks for."""
+    return _ALT_CITATION.sub(lambda m: f" [{m.group(1)}]", answer)
 
 
 def is_abstention(answer: str) -> bool:
@@ -114,7 +121,7 @@ class RAG:
         t0 = time.perf_counter()
         resp = self.llm.chat(build_messages(question, [s.text for s in sources]), max_tokens=self.max_tokens)
         timings["generate"] = resp.latency_s if not getattr(resp, "cached", False) else time.perf_counter() - t0
-        text = resp.text.strip()
+        text = normalize_citations(resp.text.strip())
         return RAGAnswer(question=question, answer=text, sources=sources, abstained=is_abstention(text),
                          citations=sentence_citations(text), timings=timings, input_tokens=resp.input_tokens,
                          output_tokens=resp.output_tokens, cost_usd=self.llm.cost_usd(resp.input_tokens, resp.output_tokens),
