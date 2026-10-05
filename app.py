@@ -211,7 +211,7 @@ with ask_tab:
                 for col, (label, value) in zip(st.columns(len(stages)), stages):
                     col.metric(label, value)
                 cost = "cost n/a" if ans.cost_usd is None else (
-                    "$0 (local model)" if ans.cost_usd == 0 else f"${ans.cost_usd:.6f}")
+                    "$0 (local model)" if ans.cost_usd == 0 else f"${ans.cost_usd:.6f} at paid-tier prices")
                 st.caption(f"{ans.input_tokens:,} input + {ans.output_tokens:,} output tokens · {cost} · {ans.model}")
                 if ans.invalid_citations:
                     st.error(f"{ans.invalid_citations} citation(s) point to sources that do not exist.")

@@ -176,7 +176,8 @@ class LLM:
         if m.startswith("qwen/qwen3"):
             return {"reasoning_effort": "none"}
         if self.provider == "gemini" and m.startswith("gemini-3"):
-            return {"reasoning_effort": "low", "max_tokens": max_tokens + 1024}
+            # Gemini 3 thinking can't be turned off; "minimal" is the lowest level.
+            return {"reasoning_effort": "minimal", "max_tokens": max_tokens + 1024}
         if self.provider == "openai" and m.startswith("gpt-6"):
             # OpenAI reasoning models take max_completion_tokens instead of max_tokens.
             return {"reasoning_effort": "none", "max_tokens": None, "max_completion_tokens": max_tokens}

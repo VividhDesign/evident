@@ -1,9 +1,11 @@
 {
-  "_note": "USD per 1M tokens, checked 2026-10-05 against the providers' published standard prices. Add any provider/model you use as \"provider/model\".",
+  "_note": "USD per 1M tokens, checked 2026-10-05 against the providers' published paid-tier prices (free tiers cost $0). Add any provider/model you use as \"provider/model\".",
   "usd_per_million_tokens": {
     "groq/openai/gpt-oss-20b": {"input": 0.075, "output": 0.30},
     "groq/openai/gpt-oss-120b": {"input": 0.15, "output": 0.60},
     "groq/qwen/qwen3.8-27b": {"input": 0.80, "output": 4.00},
+    "gemini/gemini-3.5-flash-lite": {"input": 0.30, "output": 2.50},
+    "gemini/gemini-3.8-flash": {"input": 0.75, "output": 3.75},
     "openai/gpt-6-luna": {"input": 0.10, "output": 0.50}
   }
 }
