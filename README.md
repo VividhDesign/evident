@@ -146,7 +146,7 @@ evident eval-generation --dataset fiqa --n 100            # ~1.5 h with local 10
 evident calibrate-judge --n 30                            # hand-label claims, measure judge agreement
 ```
 
-Hosted LLMs: `--provider groq --model llama-3.1-8b-instant` (reads `GROQ_API_KEY`); `gemini` and `openai` work the
+Hosted LLMs: `--provider groq --model openai/gpt-oss-20b` (reads `GROQ_API_KEY`); `gemini` and `openai` work the
 same way. All of them use one OpenAI-compatible client. Responses are cached in SQLite, so re-running an
 evaluation is free and deterministic.
 

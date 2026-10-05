@@ -28,7 +28,7 @@ DEMO_DATA_REPO = "vividh111/evident-demo-data"  # precomputed embeddings (Huggin
 if HOSTED:
     os.environ.setdefault("EVIDENT_DATA", str(Path.home() / ".cache" / "evident-demo"))
     os.environ.setdefault("EVIDENT_LLM_PROVIDER", "groq")
-    os.environ.setdefault("EVIDENT_LLM_MODEL", "llama-3.1-8b-instant")
+    os.environ.setdefault("EVIDENT_LLM_MODEL", "openai/gpt-oss-20b")
     os.environ.setdefault("EVIDENT_VERBOSE", "1")
     os.environ.setdefault("HF_HUB_DISABLE_XET", "1")  # plain HTTPS downloads; Xet's native I/O can fail in containers
     os.environ.setdefault("EVIDENT_THREADS", "2")  # if an index must be built, don't oversubscribe a shared CPU
@@ -161,7 +161,7 @@ with st.sidebar:
     reranker = st.selectbox("Reranker (for *_rerank modes)", rerankers, index=0)
     providers = [p for p in PROVIDERS if p != "ollama"] if HOSTED else list(PROVIDERS)
     provider = st.selectbox("LLM provider", providers, index=0)
-    default_model = {"ollama": config.LLM_MODEL, "groq": "llama-3.1-8b-instant",
+    default_model = {"ollama": config.LLM_MODEL, "groq": "openai/gpt-oss-20b",
                      "gemini": "gemini-2.5-flash", "openai": "gpt-4o-mini"}[provider]
     model = st.text_input("Model", default_model)
     st.divider()

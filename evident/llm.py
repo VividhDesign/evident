@@ -34,8 +34,8 @@ PROVIDERS = {
 
 # USD per 1M tokens (input, output). Edit evident/prices.json to update; values there win.
 DEFAULT_PRICES = {
-    "groq/llama-3.1-8b-instant": (0.05, 0.08),
-    "groq/llama-3.3-70b-versatile": (0.59, 0.79),
+    "groq/openai/gpt-oss-20b": (0.075, 0.30),
+    "groq/openai/gpt-oss-120b": (0.15, 0.60),
 }
 
 
@@ -149,6 +149,13 @@ class LLM:
 
     def _openai(self, messages, max_tokens, json_mode):
         body = {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
+        if "gpt-oss" in self.model:
+            # Reasoning model: its hidden reasoning tokens count against max_tokens, so keep the effort low
+            # and add headroom, otherwise the visible answer can come back empty or truncated.
+            body["reasoning_effort"] = "low"
+            body["max_tokens"] = max_tokens + 1024
+            if self.provider == "groq":
+                body["include_reasoning"] = False
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         r = self.client.post(f"{self.base_url}/chat/completions", json=body,
