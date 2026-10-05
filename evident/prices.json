@@ -1,7 +1,9 @@
 {
-  "_note": "USD per 1M tokens, checked 2026-10-05 against Groq's published developer-plan prices. Add any provider/model you use as \"provider/model\".",
+  "_note": "USD per 1M tokens, checked 2026-10-05 against the providers' published standard prices. Add any provider/model you use as \"provider/model\".",
   "usd_per_million_tokens": {
     "groq/openai/gpt-oss-20b": {"input": 0.075, "output": 0.30},
-    "groq/openai/gpt-oss-120b": {"input": 0.15, "output": 0.60}
+    "groq/openai/gpt-oss-120b": {"input": 0.15, "output": 0.60},
+    "groq/qwen/qwen3.8-27b": {"input": 0.80, "output": 4.00},
+    "openai/gpt-6-luna": {"input": 0.10, "output": 0.50}
   }
 }

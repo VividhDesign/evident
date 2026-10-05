@@ -38,6 +38,22 @@ DEFAULT_PRICES = {
     "groq/openai/gpt-oss-120b": (0.15, 0.60),
 }
 
+# Models offered in the app's model picker (checked 2026-10-05 against each provider's model list).
+# Any other model id still works through the CLI or the picker's custom option.
+MODELS = {
+    "ollama": {config.LLM_MODEL: "local, the generator used in the evaluation"},
+    "groq": {"openai/gpt-oss-20b": "fast and cheap (default)",
+             "openai/gpt-oss-120b": "larger, stronger reasoning",
+             "qwen/qwen3.8-27b": "preview model, reasoning off"},
+    "gemini": {"gemini-3.5-flash-lite": "cheapest", "gemini-3.8-flash": "stronger"},
+    "openai": {"gpt-6-luna": "cheapest", "gpt-6.1-sol": "stronger"},
+}
+
+
+def configured_providers() -> list[str]:
+    """Providers usable right now: Ollama needs no key, the others need their API key set."""
+    return [p for p, info in PROVIDERS.items() if info["key_env"] is None or os.environ.get(info["key_env"])]
+
 
 def load_prices() -> dict[str, tuple[float, float]]:
     prices = dict(DEFAULT_PRICES)
@@ -147,15 +163,29 @@ class LLM:
         text = re.sub(r"<think>.*?</think>", "", data["message"]["content"], flags=re.DOTALL).strip()
         return text, data.get("prompt_eval_count", 0), data.get("eval_count", 0)
 
+    def _reasoning_params(self, max_tokens: int) -> dict:
+        """Request settings for reasoning models. Their hidden reasoning tokens count against the output
+        budget, so effort is kept low (or off) and headroom added; otherwise the visible answer can come
+        back empty or truncated. A None value removes that key from the request."""
+        m = self.model
+        if "gpt-oss" in m:
+            params = {"reasoning_effort": "low", "max_tokens": max_tokens + 1024}
+            if self.provider == "groq":
+                params["include_reasoning"] = False
+            return params
+        if m.startswith("qwen/qwen3"):
+            return {"reasoning_effort": "none"}
+        if self.provider == "gemini" and m.startswith("gemini-3"):
+            return {"reasoning_effort": "low", "max_tokens": max_tokens + 1024}
+        if self.provider == "openai" and m.startswith("gpt-6"):
+            # OpenAI reasoning models take max_completion_tokens instead of max_tokens.
+            return {"reasoning_effort": "none", "max_tokens": None, "max_completion_tokens": max_tokens}
+        return {}
+
     def _openai(self, messages, max_tokens, json_mode):
         body = {"model": self.model, "messages": messages, "temperature": self.temperature, "max_tokens": max_tokens}
-        if "gpt-oss" in self.model:
-            # Reasoning model: its hidden reasoning tokens count against max_tokens, so keep the effort low
-            # and add headroom, otherwise the visible answer can come back empty or truncated.
-            body["reasoning_effort"] = "low"
-            body["max_tokens"] = max_tokens + 1024
-            if self.provider == "groq":
-                body["include_reasoning"] = False
+        body.update(self._reasoning_params(max_tokens))
+        body = {k: v for k, v in body.items() if v is not None}
         if json_mode:
             body["response_format"] = {"type": "json_object"}
         r = self.client.post(f"{self.base_url}/chat/completions", json=body,

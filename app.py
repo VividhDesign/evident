@@ -45,7 +45,7 @@ import sys  # noqa: E402
 print(f"[evident] hosted={HOSTED} streamlit_cloud={ON_STREAMLIT_CLOUD} data_dir={config.DATA_DIR}", file=sys.stderr, flush=True)
 from evident.data import load_beir  # noqa: E402
 from evident.ingest import list_corpora, load_corpus  # noqa: E402
-from evident.llm import LLM, PROVIDERS  # noqa: E402
+from evident.llm import LLM, MODELS, configured_providers  # noqa: E402
 from evident.rag import RAG  # noqa: E402
 from evident.retriever import MODES, Retriever  # noqa: E402
 
@@ -159,11 +159,16 @@ with st.sidebar:
     k = st.slider("Sources given to the LLM", 1, 10, 5)
     rerankers = ["minilm"] if HOSTED else list(config.RERANK_MODELS)
     reranker = st.selectbox("Reranker (for *_rerank modes)", rerankers, index=0)
-    providers = [p for p in PROVIDERS if p != "ollama"] if HOSTED else list(PROVIDERS)
-    provider = st.selectbox("LLM provider", providers, index=0)
-    default_model = {"ollama": config.LLM_MODEL, "groq": "openai/gpt-oss-20b",
-                     "gemini": "gemini-2.5-flash", "openai": "gpt-4o-mini"}[provider]
-    model = st.text_input("Model", default_model)
+    # Only offer providers whose API key is set; hosted, Ollama isn't reachable.
+    providers = [p for p in configured_providers() if not (HOSTED and p == "ollama")] or ["groq"]
+    provider = st.selectbox("LLM provider", providers, index=0,
+                            help="Only providers with an API key configured on this deployment are listed")
+    custom = "custom model id..."
+    model_options = list(MODELS[provider]) + [custom]
+    model = st.selectbox("Model", model_options, index=0,
+                         format_func=lambda m: m if m == custom else f"{m} · {MODELS[provider][m]}")
+    if model == custom:
+        model = st.text_input("Model id", list(MODELS[provider])[0]).strip()
     st.divider()
     st.markdown(f"**Code:** [Evident (RAG)]({EVIDENT_REPO}) · [Strata (vector DB)]({STRATA_REPO})")
     st.caption(f"Deployment: {'hosted' if HOSTED else 'local'}")
