@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 import time
 from pathlib import Path
 
@@ -43,13 +44,17 @@ from evident import config  # noqa: E402
 import sys  # noqa: E402
 
 print(f"[evident] hosted={HOSTED} streamlit_cloud={ON_STREAMLIT_CLOUD} data_dir={config.DATA_DIR}", file=sys.stderr, flush=True)
-from evident.data import load_beir  # noqa: E402
+from evident.data import load_beir, load_documents  # noqa: E402
+from evident.embed import Embedder  # noqa: E402
 from evident.ingest import list_corpora, load_corpus  # noqa: E402
 from evident.llm import LLM, MODELS, configured_providers  # noqa: E402
 from evident.rag import RAG  # noqa: E402
 from evident.retriever import MODES, Retriever  # noqa: E402
 
 QUESTION_LIMIT = 20  # per browser session on the hosted demo (protects the free API quota)
+UPLOAD_CORPUS = "your documents (this session)"
+# Uploads are embedded on the server's CPU, so the hosted demo keeps them small.
+MAX_UPLOAD_FILES, MAX_UPLOAD_MB, MAX_UPLOAD_CHUNKS = (5, 5, 1500) if HOSTED else (50, 200, 20000)
 STRATA_REPO = "https://github.com/VividhDesign/strata"
 EVIDENT_REPO = "https://github.com/VividhDesign/evident"
 STRATA_IMG = "https://raw.githubusercontent.com/VividhDesign/strata/main/docs/img/{}-light.png"
@@ -98,11 +103,46 @@ def get_retriever(corpus: str, reranker: str) -> Retriever:
     return retriever
 
 
-@st.cache_resource
-def get_llm(provider: str, model: str):
-    """(LLM, None) or (None, reason it is unavailable)."""
+@st.cache_resource(show_spinner=False)
+def get_embedder() -> Embedder:
+    return Embedder()
+
+
+def ingest_uploads(files, reranker: str) -> str | None:
+    """Chunks, embeds and indexes uploaded files into a Retriever kept in this browser session only.
+    Nothing is written to the shared cache, so other visitors never see the documents. Returns an error message."""
+    if len(files) > MAX_UPLOAD_FILES:
+        return f"Upload at most {MAX_UPLOAD_FILES} files."
+    if sum(f.size for f in files) > MAX_UPLOAD_MB * 2**20:
+        return f"Files must total at most {MAX_UPLOAD_MB} MB."
     try:
-        return LLM(provider, model), None
+        with tempfile.TemporaryDirectory() as tmp:
+            for f in files:
+                (Path(tmp) / Path(f.name).name).write_bytes(f.getvalue())
+            docs = load_documents(tmp, max_words=180, overlap=40)
+    except Exception as e:  # unreadable or encrypted PDF, ...
+        return f"Could not read the files: {e}"
+    if not docs:
+        return "No text found. Scanned PDFs (images only) have no extractable text."
+    if len(docs) > MAX_UPLOAD_CHUNKS:
+        return f"The files split into {len(docs):,} chunks; the limit is {MAX_UPLOAD_CHUNKS:,}."
+    retriever = Retriever(docs, embedder=get_embedder(), reranker=reranker, cache_embeddings=False)
+    st.session_state["upload"] = {"retriever": retriever, "files": [f.name for f in files], "chunks": len(docs)}
+    return None
+
+
+def retriever_for(corpus: str, reranker: str) -> Retriever:
+    if corpus == UPLOAD_CORPUS:
+        return st.session_state["upload"]["retriever"]
+    return get_retriever(corpus, reranker)
+
+
+@st.cache_resource
+def get_llm(provider: str, model: str, cache: bool = True):
+    """(LLM, None) or (None, reason it is unavailable). Answers about uploaded documents pass cache=False
+    so they are not written to the shared response cache on disk."""
+    try:
+        return LLM(provider, model, cache=cache), None
     except Exception as e:  # missing API key, unknown provider, ...
         return None, str(e)
 
@@ -151,7 +191,13 @@ def render_citations(text: str) -> str:
 with st.sidebar:
     st.header("Settings")
     corpora = list(config.BEIR_DATASETS) + list_corpora()
-    corpus = st.selectbox("Corpus", corpora, index=corpora.index("fiqa"),
+    if "upload" in st.session_state:
+        corpora = [UPLOAD_CORPUS] + corpora
+    if st.session_state.pop("select_upload", False):  # set by a finished upload on the previous run
+        st.session_state["corpus"] = UPLOAD_CORPUS
+    if st.session_state.get("corpus") not in corpora:
+        st.session_state["corpus"] = "fiqa"
+    corpus = st.selectbox("Corpus", corpora, key="corpus",
                           help="fiqa: 57,638 finance forum answers · scifact: 5,183 science abstracts · "
                                "nfcorpus: 3,633 medical articles")
     mode = st.selectbox("Retrieval", MODES, index=MODES.index("hybrid_convex"),
@@ -159,6 +205,27 @@ with st.sidebar:
     k = st.slider("Sources given to the LLM", 1, 10, 5)
     rerankers = ["minilm"] if HOSTED else list(config.RERANK_MODELS)
     reranker = st.selectbox("Reranker (for *_rerank modes)", rerankers, index=0)
+    with st.expander("Upload your documents", expanded="upload" not in st.session_state):
+        st.caption(f"PDF, Markdown or text · up to {MAX_UPLOAD_FILES} files, {MAX_UPLOAD_MB} MB. Split into "
+                   "~180-word chunks (40-word overlap), embedded and indexed in Strata. Kept only in this "
+                   "browser session; nothing is saved on the server. The passages retrieved for a question "
+                   "are sent to the selected LLM provider to generate the answer.")
+        files = st.file_uploader("Files", type=["pdf", "md", "markdown", "txt"], accept_multiple_files=True,
+                                 label_visibility="collapsed")
+        if st.button("Ingest", disabled=not files):
+            with st.spinner("Chunking, embedding and indexing..."):
+                error = ingest_uploads(files, reranker)
+            if error:
+                st.error(error)
+            else:
+                st.session_state["select_upload"] = True
+                st.rerun()
+        if "upload" in st.session_state:
+            up = st.session_state["upload"]
+            st.success(f"{up['chunks']:,} chunks from {len(up['files'])} file(s): {', '.join(up['files'])}")
+            if st.button("Remove uploaded documents"):
+                del st.session_state["upload"]
+                st.rerun()
     # Only offer providers whose API key is set; hosted, Ollama isn't reachable.
     providers = [p for p in configured_providers() if not (HOSTED and p == "ollama")] or ["groq"]
     provider = st.selectbox("LLM provider", providers, index=0,
@@ -184,7 +251,7 @@ with ask_tab:
     st.title("Evident")
     st.caption("Retrieval-augmented generation where every component is measured · retrieval runs on "
                "Strata, a vector database I wrote from scratch in C++")
-    llm, llm_error = get_llm(provider, model)
+    llm, llm_error = get_llm(provider, model, cache=corpus != UPLOAD_CORPUS)
     if llm is None:
         st.info("No LLM is configured on this deployment, so **retrieval-only mode** is on: you'll see the "
                 "sources the system would cite. Fully generated answers from the evaluation are browsable below.")
@@ -195,7 +262,7 @@ with ask_tab:
             st.warning(f"This public demo allows {QUESTION_LIMIT} questions per visit. Reload the page to continue.")
         else:
             st.session_state["asked"] = asked + 1
-            retriever = get_retriever(corpus, reranker)
+            retriever = retriever_for(corpus, reranker)
             if llm is not None:
                 with st.spinner("Retrieving and generating..."):
                     ans = RAG(retriever, llm, mode=mode, k=k).answer(question)
@@ -250,7 +317,7 @@ with strata_tab:
     st.title("Strata vector search, live")
     st.caption("Approximate nearest-neighbour search with an HNSW graph index, written from scratch in C++ "
                "with SIMD kernels. Compare it against exact brute-force search over the same embeddings.")
-    retriever = get_retriever(corpus, reranker)
+    retriever = retriever_for(corpus, reranker)
     index = retriever.dense.index
     s = index.stats()
     c = st.columns(5)
@@ -264,13 +331,14 @@ with strata_tab:
     ef = st.select_slider("ef: how many candidates the graph search keeps (higher = more accurate, slower)",
                           options=[10, 16, 32, 64, 128, 256, 512], value=64)
     if query.strip():
+        top = min(10, len(retriever.docs))  # an uploaded corpus can have fewer than 10 chunks
         qv = retriever.embedder.embed_queries([query])
         t0 = time.perf_counter()
-        ids, dist = index.search(qv, k=10, ef=ef, num_threads=1)
+        ids, dist = index.search(qv, k=top, ef=ef, num_threads=1)
         strata_us = (time.perf_counter() - t0) * 1e6
         t0 = time.perf_counter()
         sims = retriever.doc_vectors @ qv[0]
-        exact = np.argpartition(-sims, 9)[:10]
+        exact = np.argpartition(-sims, top - 1)[:top]
         exact_us = (time.perf_counter() - t0) * 1e6
         exact_set = set(exact.tolist())
         found = [int(i) for i in ids[0] if i >= 0]
@@ -278,7 +346,7 @@ with strata_tab:
         c[0].metric("Strata search", f"{strata_us:,.0f} µs")
         c[1].metric("Exact search", f"{exact_us:,.0f} µs")
         c[2].metric("Speedup", f"{exact_us / strata_us:.1f}×")
-        c[3].metric("Same top-10 as exact", f"{len(exact_set & set(found))} / 10")
+        c[3].metric(f"Same top-{top} as exact", f"{len(exact_set & set(found))} / {top}")
         st.dataframe(pd.DataFrame([{
             "rank": r + 1, "doc": retriever.docs[i].id, "similarity": round(1 - float(d), 4),
             "also in exact top-10": "yes" if i in exact_set else "no",
@@ -289,7 +357,9 @@ with strata_tab:
     st.subheader("The accuracy / speed trade-off")
     st.write("Each row runs 200 benchmark queries through Strata at one `ef` setting and checks how many of the "
              "true 10 nearest neighbours (from exact search) it found.")
-    if st.button("Run the sweep"):
+    if corpus not in config.BEIR_DATASETS:
+        st.info("The sweep uses a benchmark's test queries, so it runs on the BEIR corpora (fiqa, scifact, nfcorpus).")
+    elif st.button("Run the sweep"):
         import altair as alt
 
         df = ef_sweep(corpus, reranker)
